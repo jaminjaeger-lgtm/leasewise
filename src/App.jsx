@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
@@ -88,6 +88,25 @@ export default function LeaseWise() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const fileInputRef                = useRef(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("unlocked") === "true") {
+      const saved = sessionStorage.getItem("lw_results");
+      const savedState = sessionStorage.getItem("lw_state");
+      const savedDocType = sessionStorage.getItem("lw_doctype");
+      if (saved) {
+        try {
+          setResults(JSON.parse(saved));
+          if (savedState) setState(savedState);
+          if (savedDocType) setDocType(savedDocType);
+          setUnlocked(true);
+          setScreen("results");
+          window.history.replaceState({}, "", "/");
+        } catch(e) {}
+      }
+    }
+  }, []);
+
   const loadFile = useCallback((file) => {
     if (!file) return;
     setError("");
@@ -162,6 +181,9 @@ export default function LeaseWise() {
   const handleCheckout = async () => {
     setCheckoutLoading(true);
     try {
+      sessionStorage.setItem("lw_results", JSON.stringify(results));
+      sessionStorage.setItem("lw_state", state);
+      sessionStorage.setItem("lw_doctype", docType);
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
