@@ -125,7 +125,7 @@ export default function LeaseWise() {
         ? [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } }, { type: "text", text: "Please analyze this rental document." }]
         : `Please analyze this document:\n\n${docText.slice(0, 8000)}`;
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -260,6 +260,15 @@ export default function LeaseWise() {
                 {pdfBase64 ? "PDF ready — click Analyze Document below" : "PDF, Word, or text file — or paste text below"}
               </p>
             </div>
+
+            {pdfBase64 && (
+              <button
+                style={{ background: "none", border: "none", color: COLORS.inkMuted, fontSize: "0.8rem", cursor: "pointer", marginBottom: "0.75rem", padding: 0, textDecoration: "underline" }}
+                onClick={() => { setPdfBase64(null); setPdfName(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+              >
+                Clear and use a different document
+              </button>
+            )}
 
             {!pdfBase64 && (
               <>
