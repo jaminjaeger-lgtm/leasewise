@@ -45,7 +45,7 @@ Return this exact structure:
 
 Rules:
 - verdict: green = looks standard and solid, amber = items need attention, red = serious issues
-- Include 3-6 flags mixing ok/warn/danger as appropriate
+- Include 5-6 flags mixing ok/warn/danger as appropriate — we need enough to make the paywall compelling
 - Write at 8th grade reading level, no legal jargon
 - Always write from the landlord's perspective
 - ONLY return the JSON object, nothing else`;
@@ -71,6 +71,8 @@ const flagConfig = {
   danger: { bg: COLORS.redLight,   dot: COLORS.red   },
 };
 
+const FREE_FLAGS = 2;
+
 export default function LeaseWise() {
   const [screen, setScreen]         = useState("intake");
   const [state, setState]           = useState("");
@@ -82,6 +84,8 @@ export default function LeaseWise() {
   const [error, setError]           = useState("");
   const [loadingMsg, setLoadingMsg] = useState("");
   const [results, setResults]       = useState(null);
+  const [unlocked, setUnlocked]     = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const fileInputRef                = useRef(null);
 
   const loadFile = useCallback((file) => {
@@ -113,6 +117,7 @@ export default function LeaseWise() {
     const hasText = docText.trim() && !docText.trim().startsWith("%PDF");
     if (!pdfBase64 && !hasText) { setError("Please paste document text or upload a file first."); return; }
     setError("");
+    setUnlocked(false);
     setScreen("loading");
 
     const msgs = ["Reading your document…", "Identifying key clauses…", `Checking ${state} landlord-tenant law…`, "Writing your plain English summary…"];
@@ -154,9 +159,31 @@ export default function LeaseWise() {
     }
   };
 
+  const handleCheckout = async () => {
+    setCheckoutLoading(true);
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceType: "single" }),
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err) {
+      alert("Checkout failed: " + err.message);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const restart = () => {
     setScreen("intake"); setResults(null); setDocText("");
-    setPdfBase64(null); setPdfName(""); setState(""); setDocType(""); setError("");
+    setPdfBase64(null); setPdfName(""); setState(""); setDocType("");
+    setError(""); setUnlocked(false);
   };
 
   const s = {
@@ -184,8 +211,6 @@ export default function LeaseWise() {
     sectionHeader: { padding: "0.875rem 1.25rem", borderBottom: `1px solid ${COLORS.border}` },
     sectionTitle:  { fontSize: "0.75rem", fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase", color: COLORS.inkMuted },
     sectionBody:   { padding: "1.1rem 1.25rem" },
-    ctaBar: { marginTop: "1.75rem", padding: "1.375rem 1.5rem", background: COLORS.ink, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" },
-    ctaBtn: { background: COLORS.gold, color: "white", border: "none", borderRadius: 6, padding: "0.6rem 1.2rem", fontFamily: "inherit", fontSize: "0.875rem", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" },
     restartBtn: { background: "none", border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: "0.5rem 1rem", fontFamily: "inherit", fontSize: "0.8rem", color: COLORS.inkMuted, cursor: "pointer", marginTop: "0.875rem" },
   };
 
@@ -199,11 +224,13 @@ export default function LeaseWise() {
     </button>
   );
 
+  const lockedCount = results ? Math.max(0, results.flags.length - FREE_FLAGS) : 0;
+
   return (
     <div style={s.root}>
       <header style={s.header}>
         <div style={s.logo}><span style={s.logoDot}></span>LeaseWise</div>
-        <div style={s.badge}>Beta — Free Preview</div>
+        <div style={s.badge}>Beta</div>
       </header>
 
       <main style={s.main}>
@@ -305,6 +332,7 @@ export default function LeaseWise() {
               </span>
             </div>
 
+            {/* Verdict */}
             <div style={{ background: verdictConfig[results.verdict].bg, border: `1px solid ${verdictConfig[results.verdict].border}`, borderRadius: 10, padding: "1.375rem", marginBottom: "1.25rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                 <div style={{ width: 11, height: 11, borderRadius: "50%", background: verdictConfig[results.verdict].dot, flexShrink: 0 }}></div>
@@ -314,16 +342,73 @@ export default function LeaseWise() {
               <div style={{ fontSize: "0.875rem", color: COLORS.inkMuted, lineHeight: 1.7 }}>{results.verdictSummary}</div>
             </div>
 
+            {/* Summary */}
             <div style={s.section}>
               <div style={s.sectionHeader}><span style={s.sectionTitle}>Plain English Summary</span></div>
               <div style={s.sectionBody}><p style={{ fontSize: "0.9rem", lineHeight: 1.75, color: COLORS.ink }}>{results.summary}</p></div>
             </div>
 
+            {/* Flags */}
             <div style={s.section}>
-              <div style={s.sectionHeader}><span style={s.sectionTitle}>Flags &amp; Findings</span></div>
+              <div style={s.sectionHeader}>
+                <span style={s.sectionTitle}>Flags &amp; Findings</span>
+              </div>
               <div style={s.sectionBody}>
-                {results.flags.map((f, i) => (
-                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "0.7rem", borderRadius: 6, background: flagConfig[f.type].bg, marginBottom: i < results.flags.length - 1 ? 8 : 0 }}>
+                {/* Free flags — always visible */}
+                {results.flags.slice(0, FREE_FLAGS).map((f, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "0.7rem", borderRadius: 6, background: flagConfig[f.type].bg, marginBottom: 8 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: "50%", background: flagConfig[f.type].dot, flexShrink: 0, marginTop: 3 }}></div>
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: "0.875rem", marginBottom: 2, color: COLORS.ink }}>{f.title}</div>
+                      <div style={{ fontSize: "0.825rem", color: COLORS.inkMuted, lineHeight: 1.6 }}>{f.detail}</div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Locked flags */}
+                {!unlocked && lockedCount > 0 && (
+                  <div style={{ position: "relative", marginTop: 4 }}>
+                    {/* Blurred preview of next flag */}
+                    <div style={{ filter: "blur(4px)", userSelect: "none", pointerEvents: "none", marginBottom: 8 }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "0.7rem", borderRadius: 6, background: flagConfig[results.flags[FREE_FLAGS]?.type || "warn"].bg }}>
+                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: flagConfig[results.flags[FREE_FLAGS]?.type || "warn"].dot, flexShrink: 0, marginTop: 3 }}></div>
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: "0.875rem", marginBottom: 2, color: COLORS.ink }}>{results.flags[FREE_FLAGS]?.title}</div>
+                          <div style={{ fontSize: "0.825rem", color: COLORS.inkMuted, lineHeight: 1.6 }}>{results.flags[FREE_FLAGS]?.detail}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Paywall overlay */}
+                    <div style={{ background: "linear-gradient(to bottom, rgba(247,244,239,0) 0%, rgba(247,244,239,0.97) 40%)", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "flex-end", paddingBottom: "0.5rem" }}>
+                    </div>
+
+                    {/* Unlock card */}
+                    <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "1.25rem", textAlign: "center", marginTop: "0.5rem" }}>
+                      <div style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>🔒</div>
+                      <div style={{ fontWeight: 600, fontSize: "1rem", color: COLORS.ink, marginBottom: 4 }}>
+                        {lockedCount} more {lockedCount === 1 ? "finding" : "findings"} hidden
+                      </div>
+                      <div style={{ fontSize: "0.85rem", color: COLORS.inkMuted, marginBottom: "1.1rem", lineHeight: 1.5 }}>
+                        Unlock the full report to see all flags, findings, and recommendations for this document.
+                      </div>
+                      <button
+                        onClick={handleCheckout}
+                        disabled={checkoutLoading}
+                        style={{ background: COLORS.ink, color: COLORS.cream, border: "none", borderRadius: 8, padding: "0.75rem 2rem", fontFamily: "inherit", fontSize: "0.95rem", fontWeight: 500, cursor: checkoutLoading ? "not-allowed" : "pointer", opacity: checkoutLoading ? 0.6 : 1, marginBottom: "0.6rem", width: "100%" }}
+                      >
+                        {checkoutLoading ? "Loading…" : "Unlock Full Report — $4"}
+                      </button>
+                      <div style={{ fontSize: "0.75rem", color: COLORS.inkMuted }}>
+                        One-time payment · Secure checkout via Stripe
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Unlocked flags */}
+                {unlocked && results.flags.slice(FREE_FLAGS).map((f, i) => (
+                  <div key={i + FREE_FLAGS} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "0.7rem", borderRadius: 6, background: flagConfig[f.type].bg, marginBottom: i < results.flags.length - FREE_FLAGS - 1 ? 8 : 0 }}>
                     <div style={{ width: 14, height: 14, borderRadius: "50%", background: flagConfig[f.type].dot, flexShrink: 0, marginTop: 3 }}></div>
                     <div>
                       <div style={{ fontWeight: 500, fontSize: "0.875rem", marginBottom: 2, color: COLORS.ink }}>{f.title}</div>
@@ -332,14 +417,6 @@ export default function LeaseWise() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div style={s.ctaBar}>
-              <div>
-                <strong style={{ color: COLORS.cream, fontWeight: 500, display: "block", marginBottom: 2 }}>Want to save this report?</strong>
-                <span style={{ color: "rgba(247,244,239,0.7)", fontSize: "0.875rem" }}>Create a free account to save reports, track properties, and get unlimited analysis for $15/month.</span>
-              </div>
-              <button style={s.ctaBtn}>Save Report</button>
             </div>
 
             <button style={s.restartBtn} onClick={restart}>← Analyze another document</button>
