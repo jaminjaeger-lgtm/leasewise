@@ -412,7 +412,7 @@ export default function LeaseWise() {
           <>
             <div style={s.hero}>
               <h1 style={s.h1}>Plain English for<br />your rental documents</h1>
-              <p style={s.heroP}>Two quick questions so we can give you the most accurate analysis possible.</p>
+              <p style={s.heroP}>Upload any lease, addendum, or rental agreement and get an instant AI-powered analysis — plain English summary, state-specific legal flags, and a clear verdict on what to watch out for.</p>
             </div>
 
             <div style={s.card}>
