@@ -379,10 +379,6 @@ export default function LeaseWise() {
                       </div>
                     </div>
 
-                    {/* Paywall overlay */}
-                    <div style={{ background: "linear-gradient(to bottom, rgba(247,244,239,0) 0%, rgba(247,244,239,0.97) 40%)", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "flex-end", paddingBottom: "0.5rem" }}>
-                    </div>
-
                     {/* Unlock card */}
                     <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "1.25rem", textAlign: "center", marginTop: "0.5rem" }}>
                       <div style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>🔒</div>
