@@ -403,7 +403,7 @@ export default function LeaseWise() {
     <div style={s.root}>
       <header style={s.header}>
         <div style={s.logo}><span style={s.logoDot}></span>LeaseWise</div>
-        <div style={s.badge}>Beta</div>
+        
       </header>
 
       <main style={s.main}>
@@ -598,6 +598,13 @@ export default function LeaseWise() {
                 </button>
               )}
               <button style={s.restartBtn} onClick={restart}>← Analyze another document</button>
+            </div>
+
+            <div style={{ marginTop: "1.75rem", padding: "1rem 1.25rem", background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div style={{ fontSize: "1rem", flexShrink: 0, marginTop: 1 }}>⚖️</div>
+              <p style={{ fontSize: "0.78rem", color: COLORS.inkMuted, lineHeight: 1.65, margin: 0 }}>
+                <strong style={{ color: COLORS.ink, fontWeight: 500 }}>Not legal advice.</strong> LeaseWise uses AI to help landlords understand rental documents in plain English. This report is for informational purposes only and does not constitute legal advice. Laws vary by jurisdiction and change over time. For matters involving significant financial or legal risk, please consult a licensed attorney in your state.
+              </p>
             </div>
           </>
         )}
